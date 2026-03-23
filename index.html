@@ -71,8 +71,8 @@
     /* ── CANVAS ── */
     #spinCanvas {
       display: block;
-      max-height: 44vh;
-      max-width: 86vw;
+      max-height: 68vh;
+      max-width: 92vw;
       filter: drop-shadow(0 6px 18px rgba(162,25,65,0.18));
     }
 
@@ -197,9 +197,19 @@
     .back-btn {
       margin-top: 28px; margin-bottom: 8px;
     }
+
+    /* ── CONFETTI ── */
+    #confettiCanvas {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 999;
+    }
   </style>
 </head>
 <body>
+
+<canvas id="confettiCanvas"></canvas>
 
 <!-- ── MAIN VIEW ── -->
 <div class="view active" id="mainView">
@@ -235,14 +245,100 @@ const IMAGE_FILES = [
   'gafan_4.png',
   'gafan_5.png',
   'gafan_6.png',
+  'gafan_7.png',
 ];
 
 // ── STATE ──
 let currentIndex     = 0;
 let isPlaying        = true;
 let angle            = 0;
-let processedImages  = [];   // offscreen canvases
-let originalSrcs     = [];   // src strings for gallery thumbnails
+let processedImages  = [];
+let originalSrcs     = [];
+let playClickCount   = 0;
+let wasAtMax         = false;
+
+// ── CONFETTI ──
+const confCanvas = document.getElementById('confettiCanvas');
+const confCtx    = confCanvas.getContext('2d');
+let confettiPieces = [];
+let confettiActive = false;
+
+function resizeConf() {
+  confCanvas.width  = window.innerWidth;
+  confCanvas.height = window.innerHeight;
+}
+resizeConf();
+window.addEventListener('resize', resizeConf);
+
+function launchConfetti(diamond = false) {
+  const colors = diamond
+    ? ['#b9f2ff','#e0f7ff','#ffffff','#cceeff','#aee9ff','#d4f1f9']
+    : ['#e17c74','#f6a0b7','#a21941','#cfdcbf','#ffd6e0','#fff0a0'];
+
+  const count = diamond ? 120 : 90;
+  for (let i = 0; i < count; i++) {
+    confettiPieces.push({
+      x:      Math.random() * confCanvas.width,
+      y:      -10 - Math.random() * 100,
+      vx:     (Math.random() - 0.5) * 4,
+      vy:     Math.random() * 3 + 2,
+      rot:    Math.random() * Math.PI * 2,
+      rotV:   (Math.random() - 0.5) * 0.15,
+      size:   diamond ? Math.random() * 14 + 8 : Math.random() * 10 + 5,
+      color:  colors[Math.floor(Math.random() * colors.length)],
+      diamond,
+      life:   1,
+    });
+  }
+  if (!confettiActive) {
+    confettiActive = true;
+    animateConfetti();
+  }
+}
+
+function drawDiamond(ctx, x, y, size, rot) {
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.rotate(rot);
+  ctx.font = `${size * 2}px serif`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('💎', 0, 0);
+  ctx.restore();
+}
+
+function animateConfetti() {
+  confCtx.clearRect(0, 0, confCanvas.width, confCanvas.height);
+  confettiPieces = confettiPieces.filter(p => p.life > 0);
+
+  confettiPieces.forEach(p => {
+    p.x   += p.vx;
+    p.y   += p.vy;
+    p.rot += p.rotV;
+    p.vy  += 0.05;
+    if (p.y > confCanvas.height * 0.75) p.life -= 0.025;
+
+    confCtx.save();
+    confCtx.globalAlpha = p.life;
+    confCtx.fillStyle = p.color;
+
+    if (p.diamond) {
+      drawDiamond(confCtx, p.x, p.y, p.size, p.rot);
+    } else {
+      confCtx.translate(p.x, p.y);
+      confCtx.rotate(p.rot);
+      confCtx.fillRect(-p.size / 2, -p.size / 4, p.size, p.size / 2);
+    }
+    confCtx.restore();
+  });
+
+  if (confettiPieces.length > 0) {
+    requestAnimationFrame(animateConfetti);
+  } else {
+    confettiActive = false;
+    confCtx.clearRect(0, 0, confCanvas.width, confCanvas.height);
+  }
+}
 
 // ── DOM ──
 const mainView   = document.getElementById('mainView');
@@ -326,8 +422,8 @@ function setupCanvas(i) {
   if (!src) return;
   spinCanvas.width  = src.width;
   spinCanvas.height = src.height;
-  const maxH  = window.innerHeight * 0.44;
-  const maxW  = window.innerWidth  * 0.86;
+  const maxH  = window.innerHeight * 0.68;
+  const maxW  = window.innerWidth  * 0.92;
   const sc    = Math.min(maxH / src.height, maxW / src.width);
   spinCanvas.style.width  = (src.width  * sc) + 'px';
   spinCanvas.style.height = (src.height * sc) + 'px';
@@ -362,11 +458,21 @@ const PLAY_ICON  = `<svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>`;
 const PAUSE_ICON = `<svg viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>`;
 
 // ── EVENTS ──
-speedSlider.addEventListener('input', () => speedValEl.textContent = speedSlider.value);
+speedSlider.addEventListener('input', () => {
+  const v = parseInt(speedSlider.value);
+  speedValEl.textContent = v;
+  if (v === 20 && !wasAtMax) {
+    wasAtMax = true;
+    launchConfetti(false);
+  }
+  if (v < 20) wasAtMax = false;
+});
 
 playBtn.addEventListener('click', () => {
   isPlaying = !isPlaying;
   playBtn.innerHTML = isPlaying ? PLAY_ICON : PAUSE_ICON;
+  playClickCount++;
+  if (playClickCount === 5) launchConfetti(true);
 });
 
 switchBtn.addEventListener('click', () => showView('gallery'));
