@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>גפן מסתובבת</title>
+  <link href="https://fonts.googleapis.com/css2?family=Handjet:wght@400;500;900&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --red:    #e17c74;
+      --dark:   #a21941;
+      --pink:   #f6a0b7;
+      --s1:     #cfdcbf;
+      --s2:     #dae7cf;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    html, body {
+      min-height: 100%;
+    }
+
+    body {
+      min-height: 100vh;
+      background: repeating-linear-gradient(
+        90deg,
+        var(--s2) 0px, var(--s2) 68px,
+        var(--s1) 68px, var(--s1) 136px
+      );
+      background-attachment: fixed;
+      font-family: 'Handjet', monospace;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 36px 20px 200px;
+      overflow-x: hidden;
+    }
+
+    /* ── FIXED BOTTOM BAR ── */
+    .bottom-bar {
+      position: fixed;
+      bottom: 0; left: 0; right: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+      padding: 14px 20px 24px;
+      background: rgba(218, 231, 207, 0.82);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      border-top: 2px solid var(--s1);
+      z-index: 100;
+    }
+
+    /* ── VIEWS ── */
+    .view { display: none; width: 100%; max-width: 480px; flex-direction: column; align-items: center; }
+    .view.active { display: flex; }
+
+    /* ── TITLE ── */
+    h1 {
+      font-weight: 700;
+      font-size: clamp(3.2rem, 15vw, 5.4rem);
+      color: var(--red);
+      text-shadow: 4px 4px 0 var(--dark);
+      text-align: center;
+      margin-bottom: 16px;
+      letter-spacing: 1px;
+      line-height: 1;
+    }
+
+    /* ── CANVAS ── */
+    #spinCanvas {
+      display: block;
+      max-height: 44vh;
+      max-width: 86vw;
+      filter: drop-shadow(0 6px 18px rgba(162,25,65,0.18));
+    }
+
+    /* ── PLAY BUTTON ── */
+    .play-btn {
+      margin-top: 22px;
+      width: 88px; height: 62px;
+      border-radius: 31px;
+      background: var(--pink);
+      border: none; outline: none;
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      box-shadow: 0 5px 0 var(--dark);
+      transition: transform .1s, box-shadow .1s;
+    }
+    .play-btn:active { transform: translateY(5px); box-shadow: none; }
+    .play-btn svg { width: 26px; height: 26px; fill: var(--dark); }
+
+    /* ── SLIDER ── */
+    .slider-row {
+      margin-top: 18px;
+      display: flex; align-items: center; gap: 12px;
+      width: 76%;
+    }
+    .snum {
+      font-weight: 500; font-size: 1.6rem;
+      color: var(--red);
+      min-width: 28px; text-align: center;
+    }
+    input[type="range"] {
+      -webkit-appearance: none;
+      flex: 1; height: 4px; border-radius: 2px;
+      background: var(--red); outline: none; cursor: pointer;
+    }
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 22px; height: 22px; border-radius: 50%;
+      background: var(--dark);
+      box-shadow: 0 2px 8px rgba(162,25,65,0.35);
+      cursor: pointer;
+    }
+
+    /* ── SWITCH BUTTON ── */
+    .pill-btn {
+      margin-top: 22px;
+      padding: 12px 52px;
+      border-radius: 40px;
+      background: var(--pink);
+      border: none; outline: none;
+      cursor: pointer;
+      font-family: 'Handjet', monospace;
+      font-weight: 500; font-size: 1.7rem;
+      color: var(--dark);
+      box-shadow: 0 5px 0 var(--dark);
+      transition: transform .1s, box-shadow .1s;
+      letter-spacing: 1px;
+    }
+    .pill-btn:active { transform: translateY(5px); box-shadow: none; }
+
+    /* ── GALLERY ── */
+    h2 {
+      font-weight: 700;
+      font-size: clamp(3.2rem, 15vw, 5.4rem);
+      color: var(--red);
+      text-shadow: 4px 4px 0 var(--dark);
+      text-align: center;
+      margin-bottom: 24px;
+      letter-spacing: 1px;
+      line-height: 1;
+    }
+
+    .gallery-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      width: 100%;
+    }
+    /* last item alone → center it */
+    .gallery-grid .thumb:last-child:nth-child(odd) {
+      grid-column: 1 / -1;
+      justify-self: center;
+      width: 50%;
+    }
+
+    .thumb {
+      position: relative;
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      padding: 8px;
+      transition: transform .18s;
+    }
+    .thumb:hover { transform: scale(1.05) rotate(-1.5deg); }
+    .thumb:nth-child(even) { transform: rotate(1deg); }
+    .thumb:nth-child(even):hover { transform: scale(1.05) rotate(2deg); }
+
+    .thumb img {
+      max-width: 100%; max-height: 190px;
+      object-fit: contain;
+      filter:
+        drop-shadow(0 0 6px rgba(255,255,255,0.95))
+        drop-shadow(0 0 10px rgba(255,255,255,0.7))
+        drop-shadow(0 3px 10px rgba(162,25,65,0.15));
+    }
+
+    /* pixel checkmark badge */
+    .checkmark {
+      display: none;
+      position: absolute;
+      bottom: 6px; left: 50%; transform: translateX(-50%);
+      background: var(--pink);
+      border: 2.5px solid var(--dark);
+      border-radius: 50%;
+      width: 34px; height: 34px;
+      font-family: 'Handjet', monospace;
+      font-weight: 900; font-size: 1.3rem;
+      color: var(--dark);
+      align-items: center; justify-content: center;
+      line-height: 1;
+    }
+    .thumb.selected .checkmark { display: flex; }
+
+    .back-btn {
+      margin-top: 28px; margin-bottom: 8px;
+    }
+  </style>
+</head>
+<body>
+
+<!-- ── MAIN VIEW ── -->
+<div class="view active" id="mainView">
+  <h1>גפן מסתובבת!</h1>
+  <canvas id="spinCanvas"></canvas>
+</div>
+
+<!-- ── FIXED BOTTOM BAR ── -->
+<div class="bottom-bar" id="bottomBar">
+  <button class="play-btn" id="playBtn">
+    <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+  </button>
+  <div class="slider-row">
+    <span class="snum" id="speedVal">5</span>
+    <input type="range" id="speed" min="1" max="20" value="5">
+  </div>
+  <button class="pill-btn" id="switchBtn">החלף דמות</button>
+</div>
+
+<!-- ── GALLERY VIEW ── -->
+<div class="view" id="galleryView">
+  <h2>הגפנים</h2>
+  <div class="gallery-grid" id="galleryGrid"></div>
+  <button class="pill-btn back-btn" id="backBtn">חזרה ←</button>
+</div>
+
+<script>
+// ── שמות הקבצים – הוסף / מחק לפי הצורך ──
+const IMAGE_FILES = [
+  'gafan_1.png',
+  'gafan_2.png',
+  'gafan_3.png',
+  'gafan_4.png',
+  'gafan_5.png',
+  'gafan_6.png',
+];
+
+// ── STATE ──
+let currentIndex     = 0;
+let isPlaying        = true;
+let angle            = 0;
+let processedImages  = [];   // offscreen canvases
+let originalSrcs     = [];   // src strings for gallery thumbnails
+
+// ── DOM ──
+const mainView   = document.getElementById('mainView');
+const galleryView= document.getElementById('galleryView');
+const spinCanvas = document.getElementById('spinCanvas');
+const ctx        = spinCanvas.getContext('2d');
+const playBtn    = document.getElementById('playBtn');
+const speedSlider= document.getElementById('speed');
+const speedValEl = document.getElementById('speedVal');
+const switchBtn  = document.getElementById('switchBtn');
+const backBtn    = document.getElementById('backBtn');
+const galleryGrid= document.getElementById('galleryGrid');
+
+function processImage(img) {
+  const off = document.createElement('canvas');
+  off.width = img.width; off.height = img.height;
+  off.getContext('2d').drawImage(img, 0, 0);
+  return off;
+}
+
+// ── LOAD ──
+function tryLoad(src) {
+  return new Promise(resolve => {
+    const img = new Image();
+    img.onload  = () => resolve({ ok: true,  processed: processImage(img), src });
+    img.onerror = () => resolve({ ok: false });
+    img.src = src;
+  });
+}
+
+async function loadAll() {
+  const results = await Promise.all(IMAGE_FILES.map(tryLoad));
+  const loaded  = results.filter(r => r.ok);
+
+  if (!loaded.length) {
+    alert('לא נמצאו קבצים. ודא שגפן_1.png וכו׳ נמצאים באותה תיקייה כמו index.html');
+    return;
+  }
+
+  processedImages = loaded.map(r => r.processed);
+  originalSrcs    = loaded.map(r => r.src);
+
+  buildGallery();
+  setupCanvas(0);
+  spin();
+}
+
+// ── GALLERY ──
+function buildGallery() {
+  galleryGrid.innerHTML = '';
+  originalSrcs.forEach((src, i) => {
+    const div = document.createElement('div');
+    div.className = 'thumb' + (i === 0 ? ' selected' : '');
+
+    const img = document.createElement('img');
+    img.src = src;
+
+    const check = document.createElement('span');
+    check.className = 'checkmark';
+    check.textContent = '✓';
+
+    div.appendChild(img);
+    div.appendChild(check);
+
+    div.addEventListener('click', () => {
+      document.querySelectorAll('.thumb').forEach(t => t.classList.remove('selected'));
+      div.classList.add('selected');
+      currentIndex = i;
+      setupCanvas(i);
+      angle = 0;
+      showView('main');
+    });
+
+    galleryGrid.appendChild(div);
+  });
+}
+
+// ── CANVAS SIZE ──
+function setupCanvas(i) {
+  const src = processedImages[i];
+  if (!src) return;
+  spinCanvas.width  = src.width;
+  spinCanvas.height = src.height;
+  const maxH  = window.innerHeight * 0.44;
+  const maxW  = window.innerWidth  * 0.86;
+  const sc    = Math.min(maxH / src.height, maxW / src.width);
+  spinCanvas.style.width  = (src.width  * sc) + 'px';
+  spinCanvas.style.height = (src.height * sc) + 'px';
+}
+
+// ── SPIN LOOP ──
+function spin() {
+  if (isPlaying) {
+    angle += 0.013 * parseFloat(speedSlider.value);
+  }
+  const src = processedImages[currentIndex];
+  ctx.clearRect(0, 0, spinCanvas.width, spinCanvas.height);
+  if (src) {
+    ctx.save();
+    ctx.translate(spinCanvas.width / 2, spinCanvas.height / 2);
+    ctx.scale(Math.cos(angle), 1);
+    ctx.drawImage(src, -spinCanvas.width / 2, -spinCanvas.height / 2);
+    ctx.restore();
+  }
+  requestAnimationFrame(spin);
+}
+
+// ── HELPERS ──
+const bottomBar = document.getElementById('bottomBar');
+function showView(name) {
+  mainView.classList.toggle('active',    name === 'main');
+  galleryView.classList.toggle('active', name === 'gallery');
+  bottomBar.style.display = name === 'main' ? 'flex' : 'none';
+}
+
+const PLAY_ICON  = `<svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>`;
+const PAUSE_ICON = `<svg viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>`;
+
+// ── EVENTS ──
+speedSlider.addEventListener('input', () => speedValEl.textContent = speedSlider.value);
+
+playBtn.addEventListener('click', () => {
+  isPlaying = !isPlaying;
+  playBtn.innerHTML = isPlaying ? PLAY_ICON : PAUSE_ICON;
+});
+
+switchBtn.addEventListener('click', () => showView('gallery'));
+backBtn.addEventListener('click',   () => showView('main'));
+
+// ── INIT ──
+loadAll();
+</script>
+</body>
+</html>
