@@ -71,8 +71,8 @@
     /* ── CANVAS ── */
     #spinCanvas {
       display: block;
-      max-height: 68vh;
-      max-width: 92vw;
+      max-height: 52vh;
+      max-width: 78vw;
       filter: drop-shadow(0 6px 18px rgba(162,25,65,0.18));
     }
 
@@ -422,8 +422,8 @@ function setupCanvas(i) {
   if (!src) return;
   spinCanvas.width  = src.width;
   spinCanvas.height = src.height;
-  const maxH  = window.innerHeight * 0.68;
-  const maxW  = window.innerWidth  * 0.92;
+  const maxH  = window.innerHeight * 0.52;
+  const maxW  = window.innerWidth  * 0.78;
   const sc    = Math.min(maxH / src.height, maxW / src.width);
   spinCanvas.style.width  = (src.width  * sc) + 'px';
   spinCanvas.style.height = (src.height * sc) + 'px';
